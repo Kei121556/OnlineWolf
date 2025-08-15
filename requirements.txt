@@ -2,4 +2,4 @@ Flask
 Flask-SocketIO
 python-socketio
 gevent
-gevent-websockettxt
+gevent-websocket
