@@ -1,15 +1,19 @@
 import os
-from flask import Flask, render_template, request, send_from_directory
+from flask import Flask, render_template, request
 from flask_socketio import SocketIO, join_room, leave_room, emit
 import random
 
 # Vercelのサーバーレス環境では、非同期モードに`threading`を使用します
 async_mode = "threading"
 
-# --- ↓↓↓ ここが修正点です！ ↓↓↓ ---
-# プロジェクトのルートディレクトリを基準に、templateとstaticフォルダの絶対パスを指定します。
-# これにより、Vercel環境でも確実にファイルを見つけられるようになります。
-app = Flask(__name__, template_folder='../templates', static_folder='../static')
+# --- ↓↓↓ ここが最後の修正点です！ ↓↓↓ ---
+# プログラムファイル自身の場所を基準に、templatesとstaticフォルダへの絶対パスを生成します。
+# これでVercel環境でも100%迷子にならなくなります。
+base_dir = os.path.dirname(os.path.abspath(__file__))
+template_folder = os.path.join(base_dir, '..', 'templates')
+static_folder = os.path.join(base_dir, '..', 'static')
+
+app = Flask(__name__, template_folder=template_folder, static_folder=static_folder)
 # --- ↑↑↑ 修正点はここまで ↑↑↑ ---
 
 # NOTE: 秘密鍵は環境変数から読み込むのがベストプラクティスです
@@ -35,7 +39,6 @@ def room(room_id):
     return render_template('room.html')
 
 # --- SocketIOイベントハンドラ ---
-# (join, update_settings, start_game, disconnectなどの関数は変更なし)
 @socketio.on('join')
 def on_join(data):
     room_id = data['room']
@@ -101,9 +104,8 @@ def on_start_game(data):
 @socketio.on('disconnect')
 def on_disconnect():
     player_id = request.sid
-    room_to_update = None
     
-    for room_id, room in list(rooms.items()): # Iterate over a copy
+    for room_id, room in list(rooms.items()):
         if any(p['id'] == player_id for p in room['players']):
             room['players'] = [p for p in room['players'] if p['id'] != player_id]
             
